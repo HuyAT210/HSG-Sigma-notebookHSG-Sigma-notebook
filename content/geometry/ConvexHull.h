@@ -1,3 +1,10 @@
+/**
+ * Author: Icelast
+ * Description: Computes the convex hull of a set of points.
+ * Time: O(n \log n)
+ * Status: Tested
+ */
+ 
 typedef complex<long long> point;
 long long cross(point a, point b) {
     return (conj(a) * b).imag();
