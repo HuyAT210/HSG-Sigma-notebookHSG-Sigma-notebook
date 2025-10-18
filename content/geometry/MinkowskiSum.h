@@ -1,7 +1,6 @@
 /**
  * Author: Icelast
  * Description: Computes minkowski sum
- * Time: O(n \log n)
  * Status: Tested
  */
 

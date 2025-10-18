@@ -1,7 +1,6 @@
 /**
  * Author: Icelast
  * Description: General geo
- * Time: O(n \log n)
  * Status: Tested
  */
 

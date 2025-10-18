@@ -1,77 +1,74 @@
 /**
- * Author: Emil Lenngren, Simon Lindholm
- * Date: 2011-11-29
- * License: CC0
- * Source: folklore
- * Description: Calculates a valid assignment to boolean variables a, b, c,... to a 2-SAT problem,
- * so that an expression of the type $(a||b)\&\&(!a||c)\&\&(d||!b)\&\&...$
- * becomes true, or reports that it is unsatisfiable.
- * Negated variables are represented by bit-inversions (\texttt{\tilde{}x}).
- * Usage:
- *  TwoSat ts(number of boolean variables);
- *  ts.either(0, \tilde3); // Var 0 is true or var 3 is false
- *  ts.setValue(2); // Var 2 is true
- *  ts.atMostOne({0,\tilde1,2}); // <= 1 of vars 0, \tilde1 and 2 are true
- *  ts.solve(); // Returns true iff it is solvable
- *  ts.values[0..N-1] holds the assigned values to the vars
- * Time: O(N+E), where N is the number of boolean variables, and E is the number of clauses.
- * Status: stress-tested
+ * Author: Pannda
+ * Description: 2 Sat solver
+ * Time: O(n + m)
+ * Status: Tested
  */
-#pragma once
-
-struct TwoSat {
-	int N;
-	vector<vi> gr;
-	vi values; // 0 = false, 1 = true
-
-	TwoSat(int n = 0) : N(n), gr(2*n) {}
-
-	int addVar() { // (optional)
-		gr.emplace_back();
-		gr.emplace_back();
-		return N++;
-	}
-
-	void either(int f, int j) {
-		f = max(2*f, -1-2*f);
-		j = max(2*j, -1-2*j);
-		gr[f].push_back(j^1);
-		gr[j].push_back(f^1);
-	}
-	void setValue(int x) { either(x, x); }
-
-	void atMostOne(const vi& li) { // (optional)
-		if (sz(li) <= 1) return;
-		int cur = ~li[0];
-		rep(i,2,sz(li)) {
-			int next = addVar();
-			either(cur, ~li[i]);
-			either(cur, next);
-			either(~li[i], next);
-			cur = ~next;
-		}
-		either(cur, ~li[1]);
-	}
-
-	vi val, comp, z; int time = 0;
-	int dfs(int i) {
-		int low = val[i] = ++time, x; z.push_back(i);
-		for(int e : gr[i]) if (!comp[e])
-			low = min(low, val[e] ?: dfs(e));
-		if (low == val[i]) do {
-			x = z.back(); z.pop_back();
-			comp[x] = low;
-			if (values[x>>1] == -1)
-				values[x>>1] = x&1;
-		} while (x != i);
-		return val[i] = low;
-	}
-
-	bool solve() {
-		values.assign(N, -1);
-		val.assign(2*N, 0); comp = val;
-		rep(i,0,2*N) if (!comp[i]) dfs(i);
-		rep(i,0,N) if (comp[2*i] == comp[2*i+1]) return 0;
-		return 1;
-	}
+struct TwoSAT {
+    //Ann's template so 0-index it is
+    int n; // number of variables
+    vector<vector<int>> adj;
+ 
+    TwoSAT(int n) : n(n), adj(n + n) {}
+ 
+    void add(int sgn_u, int u, int sgn_v, int v) { // sgn = -1 if negating, +1 otherwise, add a condition (sgn_u * u OR sgn_v * v)
+        u = sgn_u == +1 ? 2 * u : 2 * u + 1;
+        v = sgn_v == +1 ? 2 * v : 2 * v + 1;
+        adj[u ^ 1].push_back(v);
+        adj[v ^ 1].push_back(u);
+    }
+    void add_edge(int sgn_u, int u, int sgn_v, int v) { // sgn = -1 if negating, +1 otherwise, add a condition (sgn_u * u -> sgn_v * v)
+        u = sgn_u == +1 ? 2 * u : 2 * u + 1;
+        v = sgn_v == +1 ? 2 * v : 2 * v + 1;
+        adj[u].push_back(v);
+    }
+    bool solve(vector<int> &solution) {
+        solution.resize(n);
+ 
+        vector<int> num(n + n, -1), low(n + n);
+        int tim = 0;
+        vector<int> stk;
+        vector<bool> in_stk(n + n, false);
+        vector<int> comp(n + n, -1);
+        int cnt = 0;
+ 
+        function<void(int)> dfs = [&](int u) {
+            num[u] = low[u] = tim++;
+            stk.push_back(u);
+            in_stk[u] = true;
+            for (int v : adj[u]) {
+                if (num[v] == -1) {
+                    dfs(v);
+                    low[u] = min(low[u], low[v]);
+                } else if (in_stk[v]) {
+                    low[u] = min(low[u], num[v]);
+                }
+            }
+            if (num[u] == low[u]) {
+                int v;
+                do {
+                    v = stk.back();
+                    stk.pop_back();
+                    in_stk[v] = false;
+                    comp[v] = cnt;
+                } while (v != u);
+                cnt++;
+            }
+        };
+ 
+        for (int u = 0; u < n + n; u++) {
+            if (num[u] == -1) {
+                dfs(u);
+            }
+        }
+ 
+        for (int i = 0; i < n; i++) {
+            int u = 2 * i;
+            int nu = 2 * i + 1;
+            if (comp[u] == comp[nu]) return false;
+            solution[i] = comp[u] < comp[nu] ? +1 : -1;
+        }
+ 
+        return true;
+    }
 };
