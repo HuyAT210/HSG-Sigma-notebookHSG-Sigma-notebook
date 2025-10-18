@@ -1,85 +1,91 @@
 /**
- * Author: Simon Lindholm
- * Date: 2015-02-18
- * License: CC0
- * Source: marian's (TC) code
- * Description: Aho-Corasick automaton, used for multiple pattern matching.
- * Initialize with AhoCorasick ac(patterns); the automaton start node will be at index 0.
- * find(word) returns for each position the index of the longest word that ends there, or -1 if none.
- * findAll($-$, word) finds all words (up to $N \sqrt N$ many if no duplicate patterns)
- * that start at each position (shortest first).
- * Duplicate patterns are allowed; empty patterns are not.
- * To find the longest words that start at each position, reverse all input.
- * For large alphabets, split each symbol into chunks, with sentinel bits for symbol boundaries.
- * Time: construction takes $O(26N)$, where $N =$ sum of length of patterns.
- * find(x) is $O(N)$, where N = length of x. findAll is $O(NM)$.
- * Status: stress-tested
+ * Author: Ann
+ * Description: Root is 0. Integers starting from 0 is used for the alphabet. After adding all strings, call build().
+ link() returns the node corresponding to the longest proper suffix. 
+ go() suppose the node is extended with some character, then returns the suffix link.
+ Customization: if alphabet size is big, replace array<> with map<>. The adding is the same as trie, so it's easy to understand.
  */
-#pragma once
 
 struct AhoCorasick {
-	enum {alpha = 26, first = 'A'}; // change this!
-	struct Node {
-		// (nmatches is optional)
-		int back, next[alpha], start = -1, end = -1, nmatches = 0;
-		Node(int v) { memset(next, v, sizeof(next)); }
-	};
-	vector<Node> N;
-	vi backp;
-	void insert(string& s, int j) {
-		assert(!s.empty());
-		int n = 0;
-		for (char c : s) {
-			int& m = N[n].next[c - first];
-			if (m == -1) { n = m = sz(N); N.emplace_back(-1); }
-			else n = m;
-		}
-		if (N[n].end == -1) N[n].start = j;
-		backp.push_back(N[n].end);
-		N[n].end = j;
-		N[n].nmatches++;
-	}
-	AhoCorasick(vector<string>& pat) : N(1, -1) {
-		rep(i,0,sz(pat)) insert(pat[i], i);
-		N[0].back = sz(N);
-		N.emplace_back(0);
+    struct Node {
+        int p;
+        int c;
+        int cnt = 0;
+        array<int, 2> next = array<int, 2>{0, 0};
+        int link = 0;
+        array<int, 2> go = array<int, 2>{0, 0};
+        Node(int p = -1, int c = -1) : p(p), c(c) {}
+    };
 
-		queue<int> q;
-		for (q.push(0); !q.empty(); q.pop()) {
-			int n = q.front(), prev = N[n].back;
-			rep(i,0,alpha) {
-				int &ed = N[n].next[i], y = N[prev].next[i];
-				if (ed == -1) ed = y;
-				else {
-					N[ed].back = y;
-					(N[ed].end == -1 ? N[ed].end : backp[N[ed].start])
-						= N[y].end;
-					N[ed].nmatches += N[y].nmatches;
-					q.push(ed);
-				}
-			}
-		}
-	}
-	vi find(string word) {
-		int n = 0;
-		vi res; // ll count = 0;
-		for (char c : word) {
-			n = N[n].next[c - first];
-			res.push_back(N[n].end);
-			// count += N[n].nmatches;
-		}
-		return res;
-	}
-	vector<vi> findAll(vector<string>& pat, string word) {
-		vi r = find(word);
-		vector<vi> res(sz(word));
-		rep(i,0,sz(word)) {
-			int ind = r[i];
-			while (ind != -1) {
-				res[i - sz(pat[ind]) + 1].push_back(ind);
-				ind = backp[ind];
-			}
-		}
-		return res;
-	}
+    vector<Node> trie;
+
+    AhoCorasick() : trie(1) {}
+
+    void add(vector<int> s) {
+        int u = 0;
+        for (int c : s) {
+            if (!trie[u].next[c]) {
+                trie[u].next[c] = trie.size();
+                trie.emplace_back(u, c);
+            }
+            u = trie[u].next[c];
+        }
+        trie[u].cnt++;
+    }
+
+    void add(vector<vector<int>> ss) {
+        for (vector<int> s : ss) {
+            add(s);
+        }
+    }
+
+    vector<int> q;
+    void build() {
+        int n = trie.size();
+        q.resize(n);
+        int cur = 0;
+        q[cur++] = 0;
+        for (int i = 0; i < n; i++) {
+            int u = q[i];
+            trie[u].link = u == 0 || trie[u].p == 0 ? 0 : trie[trie[trie[u].p].link].go[trie[u].c];
+            trie[u].cnt += trie[trie[u].link].cnt;
+            for (int c = 0; c < 2; c++) {
+                trie[u].go[c] = trie[u].next[c] ? trie[u].next[c] : u == 0 ? 0 : trie[trie[u].link].go[c];
+                if (trie[u].next[c]) {
+                    q[cur++] = trie[u].next[c];
+                }
+            }
+        }
+    }
+
+    int size() { return trie.size(); }
+    int link(int u) { return trie[u].link; }
+    int go(int u, int c) { return trie[u].go[c]; }
+    int cnt(int u) { return trie[u].cnt; }
+};
+
+struct AhoCorasickContainer {
+    vector<vector<vector<int>>> sss;
+    vector<AhoCorasick> ahos;
+    int status;
+    AhoCorasickContainer(int LOG) : sss(LOG), ahos(LOG), status(0) {}
+
+    void add(vector<vector<int>> ss, int i) {
+        if (status >> i & 1) {
+            ss.insert(ss.end(), sss[i].begin(), sss[i].end());
+            sss[i].clear();
+            ahos[i] = AhoCorasick();
+            status ^= 1 << i;
+            add(ss, i + 1);
+        } else {
+            ahos[i].add(ss);
+            ahos[i].build();
+            sss[i] = ss;
+            status ^= 1 << i;
+        }
+    }
+
+    void add(vector<int> s) {
+        add({s}, 0);
+    }
 };
