@@ -1,35 +1,32 @@
-/**
- * Author: Stjepan Glavina, chilli
- * Date: 2019-05-05
- * License: Unlicense
- * Source: https://github.com/stjepang/snippets/blob/master/convex_hull.cpp
- * Description:
-\\\begin{minipage}{75mm}
-Returns a vector of the points of the convex hull in counter-clockwise order.
-Points on the edge of the hull between two other points are not considered part of the hull.
-\end{minipage}
-\begin{minipage}{15mm}
-\vspace{-6mm}
-\includegraphics[width=\textwidth]{content/geometry/ConvexHull}
-\vspace{-6mm}
-\end{minipage}
- * Time: O(n \log n)
- * Status: stress-tested, tested with kattis:convexhull
-*/
-#pragma once
+typedef complex<long long> point;
+long long cross(point a, point b) {
+    return (conj(a) * b).imag();
+}
 
-#include "Point.h"
-
-typedef Point<ll> P;
-vector<P> convexHull(vector<P> pts) {
-	if (sz(pts) <= 1) return pts;
-	sort(all(pts));
-	vector<P> h(sz(pts)+1);
-	int s = 0, t = 0;
-	for (int it = 2; it--; s = --t, reverse(all(pts)))
-		for (P p : pts) {
-			while (t >= s + 2 && h[t-2].cross(h[t-1], p) <= 0) t--;
-			h[t++] = p;
-		}
-	return {h.begin(), h.begin() + t - (t == 2 && h[0] == h[1])};
+vector<point> getConvexHull(vector<point> a) { // colinear included, returned in clockwise order
+    sort(a.begin(), a.end(), [&](point x, point y) {
+        if (x.real() == y.real()) return x.imag() < y.imag();
+        return x.real() < y.real();
+    });
+    vector<point> lower_hull;
+    for (point p : a) {
+        while (lower_hull.size() >= 2 && cross(lower_hull[lower_hull.size() - 1] - p, lower_hull[lower_hull.size() - 2] - p) > 0) { // change to >= to not include colinear points
+            lower_hull.pop_back();
+        }
+        lower_hull.push_back(p);
+    }
+    vector<point> upper_hull;
+    reverse(a.begin(), a.end());
+    for (point p : a) {
+        while (upper_hull.size() >= 2 && cross(upper_hull[upper_hull.size() - 1] - p, upper_hull[upper_hull.size() - 2] - p) > 0) { // change to >= to not include colinear points
+            upper_hull.pop_back();
+        }
+        upper_hull.push_back(p);
+    }
+    lower_hull.pop_back();
+    upper_hull.pop_back();
+    vector<point> hull;
+    hull.insert(hull.end(), lower_hull.begin(), lower_hull.end());
+    hull.insert(hull.end(), upper_hull.begin(), upper_hull.end());
+    return hull;
 }
