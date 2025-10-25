@@ -1,7 +1,7 @@
 /**
  * Author: Pannda
  * Description: Weighted DSU, using heuristic approach
- * Time: O(nlogn)
+ * Time: O(n \log n)
  * Status: Tested
  */
 
