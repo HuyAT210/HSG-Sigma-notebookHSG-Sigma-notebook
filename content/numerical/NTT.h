@@ -3,131 +3,100 @@
  * Description: Just NTT
  * Status: I don't know
  */
-constexpr int NTT_PRIMES[] = {998244353, 167772161, 469762049};
-
-// assumptions:
-// - |a| is power of 2
-// - mint::mod() is a valid NTT primes (2^k * m + 1)
-template<typename mint> void ntt(std::vector<mint>& a, bool is_inverse) {
-    int n = a.size();
-    if (n == 1) return;
-
-    static const int mod = mint::mod();
-    static const mint root = mint::get_primitive_root();
-    assert(__builtin_popcount(n) == 1 && (mod - 1) % n == 0);
-
-    static std::vector<mint> w{1}, iw{1};
-    for (int m = w.size(); m < n / 2; m *= 2) {
-        mint dw = root.pow((mod - 1) / (4 * m));
-        mint dwinv = dw.inv();
-        w.resize(m * 2);
-        iw.resize(m * 2);
-        for (int i = 0; i < m; ++i) {
-            w[m + i] = w[i] * dw;
-            iw[m + i] = iw[i] * dwinv;
-        }
-    }
-
-    if (!is_inverse) {
-        for (int m = n; m >>= 1; ) {
-            for (int s = 0, k = 0; s < n; s += 2 * m, ++k) {
-                for (int i = s; i < s + m; ++i) {
-                    mint x = a[i], y = a[i + m] * w[k];
-                    a[i] = x + y;
-                    a[i + m] = x - y;
-                }
-            }
-        }
-    } else {
-        for (int m = 1; m < n; m *= 2) {
-            for (int s = 0, k = 0; s < n; s += 2 * m, ++k) {
-                for (int i = s; i < s + m; ++i) {
-                    mint x = a[i], y = a[i + m];
-                    a[i] = x + y;
-                    a[i + m] = (x - y) * iw[k];
-                }
-            }
-        }
-        int n_inv = mint(n).inv().x;
-        for (auto& v : a) v *= n_inv;
-    }
-}
-
-template<typename mint>
-std::vector<mint> ntt_multiply(int sz, std::vector<mint> a, std::vector<mint> b) {
-    a.resize(sz);
-    b.resize(sz);
-    if (a == b) { // optimization for squaring polynomial
-        ntt(a, false);
-        b = a;
-    } else {
-        ntt(a, false);
-        ntt(b, false);
-    }
-    for (int i = 0; i < sz; ++i) a[i] *= b[i];
-    ntt(a, true);
-    return a;
-}
-
-template<int MOD, typename mint>
-std::vector<ModInt<MOD>> convert_mint_and_multiply(
-        int sz,
-        const std::vector<mint>& a,
-        const std::vector<mint>& b) {
-    using mint2 = ModInt<MOD>;
-
-    std::vector<mint2> a2(a.size()), b2(b.size());
-    for (size_t i = 0; i < a.size(); ++i) {
-        a2[i] = mint2(a[i].x);
-    }
-    for (size_t i = 0; i < b.size(); ++i) {
-        b2[i] = mint2(b[i].x);
-    }
-    return ntt_multiply(sz, a2, b2);
-}
-
-long long combine(int r0, int r1, int r2, int mod) {
-    using mint2 = ModInt<NTT_PRIMES[2]>;
-    static const long long m01 = 1LL * NTT_PRIMES[0] * NTT_PRIMES[1];
-    static const long long m0_inv_m1 = ModInt<NTT_PRIMES[1]>(NTT_PRIMES[0]).inv().x;
-    static const long long m01_inv_m2 = mint2(m01).inv().x;
-
-    int v1 = (m0_inv_m1 * (r1 + NTT_PRIMES[1] - r0)) % NTT_PRIMES[1];
-    auto v2 = (mint2(r2) - r0 - mint2(NTT_PRIMES[0]) * v1) * m01_inv_m2;
-    return (r0 + 1LL * NTT_PRIMES[0] * v1 + m01 % mod * v2.x) % mod;
-}
-
-template<typename mint>
-std::vector<mint> multiply(const std::vector<mint>& a, const std::vector<mint>& b) {
-    if (a.empty() || b.empty()) return {};
-    int sz = 1, sz_a = a.size(), sz_b = b.size();
-    while (sz < sz_a + sz_b) sz <<= 1;
-    if (sz <= 16) {
-        std::vector<mint> res(sz_a + sz_b - 1);
-        for (int i = 0; i < sz_a; ++i) {
-            for (int j = 0; j < sz_b; ++j) {
-                res[i + j] += a[i] * b[j];
-            }
-        }
-        return res;
-    }
-
-    int mod = mint::mod();
-    std::vector<mint> res;
-    if (std::find(std::begin(NTT_PRIMES), std::end(NTT_PRIMES), mod) != std::end(NTT_PRIMES)) {
-        res = ntt_multiply(sz, a, b);
-    } else {
-        auto c0 = convert_mint_and_multiply<NTT_PRIMES[0], mint> (sz, a, b);
-        auto c1 = convert_mint_and_multiply<NTT_PRIMES[1], mint> (sz, a, b);
-        auto c2 = convert_mint_and_multiply<NTT_PRIMES[2], mint> (sz, a, b);
-
-        res.resize(sz);
-        for (int i = 0; i < sz; ++i) {
-            res[i] = combine(c0[i].x, c1[i].x, c2[i].x, mod);
-        }
-    }
-
-    res.resize(sz_a + sz_b - 1);
-    return res;
-}
-// }}}
+ const int N = 4e5 + 10;
+ const int V = 1e7 + 10;
+ const long long INF = 1e18;
+ const long long M = 998244353;
+  
+  
+  
+ long long fact[N + 1],ifact[N + 1],n;
+  
+ long long power(long long a,long long b,long long c){
+     if(b == 0){
+         return 1;
+     }
+     long long t = power(a,b >> 1,c);
+     t = (t * t) % c;
+     if(b & 1){
+         return (t * a) % c;
+     }
+     return t;
+ }
+ void precompute(){
+     fact[0] = 1;
+     for(int i = 1;i <= N;++i){
+         fact[i] = (fact[i - 1] * i) % M;
+     }
+     ifact[N] = power(fact[N],M - 2,M);
+     for(int i = N - 1;i >= 0;--i){
+         ifact[i] = (ifact[i + 1] * (i + 1)) % M;
+     }
+ }
+  
+ const int mod = 998244353;
+ //const int root = 5;
+ //const int root_1 = 4404020;
+ //const int root_pw = 1 << 20;
+  
+ long long  pw(long long  x, long long  k = mod-2, long long  p = mod) {
+     long long  r = 1;
+     while (k) {
+         if (k & 1) r = r * x % p;
+         x = x * x % p;
+         k >>= 1;
+     }
+     return r;
+ }
+ const long long  G = 3, GIV = pw(G);
+ //const int N = 1 << 23;
+ long long  iv[N + 1];
+  
+ void ntt(std::vector<long long> &a, bool invert) {
+     int n = a.size();
+     for (int i = 1, j = 0; i < n; i++) {
+         int bit = n >> 1;
+         for (; j & bit; bit >>= 1)
+             j ^= bit;
+         j ^= bit;
+         if (i < j)
+             std::swap(a[i], a[j]);
+     }
+     for (int len = 2; len <= n; len <<= 1) {
+         long long  wlen = pw(invert ? GIV : G, (mod - 1) / len);
+  
+         for (int i = 0; i < n; i += len) {
+             long long  w = 1;
+             for (int j = 0; j < len / 2; j++) {
+                 long long  u = a[i + j];
+                 long long  v = (a[i + j + len / 2] * w) % mod;
+  
+                 a[i + j] = (u + v < mod ? u + v : u + v - mod);
+                 a[i + j + len / 2] = (u - v >= 0 ? u - v : u - v + mod);
+  
+                 w = w * wlen % mod;
+             }
+         }
+     }
+     if (invert) {
+         long long  n_inv = iv[n];
+         for (long long  &x : a)
+             x = x * n_inv % mod;
+     }
+ }
+ std::vector<long long > multiply(std::vector<long long > a,std::vector<long long > b) {
+     int n = 1;
+     while (n < (int)a.size() + (int)b.size())
+         n <<= 1;
+     a.resize(n, 0);
+     b.resize(n, 0);
+     ntt(a, false);
+     ntt(b, false);
+     std::vector<long long > c(n);
+     for (int i = 0; i < n; i++)
+         c[i] = (a[i] * b[i]) % mod;
+     ntt(c, true);
+     while (c.size() > 1 && c.back() == 0)
+         c.pop_back();
+     return c;
+ }
