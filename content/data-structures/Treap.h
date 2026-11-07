@@ -1,10 +1,8 @@
-#include<bits/stdc++.h>
-#define newl '\n'
- 
-const int MaxN = 1e5 + 10;
-const int MaxV = 1e7 + 10;
-const long long Inf = 1e18;
-const long long Mod = 1e9 + 7;
+/**
+ * Author: HuyAT
+ * Description: Treap with range sum and reverse operation
+ * Status: Tested by CSES
+*/
  
 std::mt19937_64 rng(std::chrono::high_resolution_clock().now().time_since_epoch().count());
  
